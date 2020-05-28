@@ -1,0 +1,90 @@
+var EMAIL_TEMPLATE_DOC_URL = 'https://docs.google.com/document/d/1CEpcJcHPrKFsL_y-A0YRA2hGvfFA6W_HAEff_SQDJgc/edit#heading=h.f7vznk10qcn7';
+var EMAIL_SUBJECT = 'ENC STEM Teacher Recommendation';
+
+function sendEmail() {
+
+var ss = SpreadsheetApp.getActiveSpreadsheet();
+var surveySheet = ss.getSheetByName("FormSubmissionRelay");
+var stagingSheet = ss.getSheetByName("EmailStaging");
+ 
+var count = stagingSheet.getRange(1,7).getValues(); // integer
+  
+for (r= 1; r<= count; r++) {
+var check = stagingSheet.getRange(r,4).getValues();    //checks to see if we have already sent email
+  
+  if (check == 0) {  // if check = 1, don't run
+  
+    var teacherName = stagingSheet.getRange(r,1).getValues(); // get first name... getRane(row,column)... our r starts at 2 and increments by 1
+    Logger.log(teacherName);  // we use logger to check our work and find bugs
+    
+    var email = stagingSheet.getRange(r,3).getValue(); // get email address
+    Logger.log(email);   // log it
+    
+    var studentName = stagingSheet.getRange(r,2).getValues(); //get last name
+    //var message = "</p>" + "Dear " + firstName + "," + "<br>" + "<br>" + "Your message here..." ; // here we can put our body and format w/ html however we want.. can use bold, change padding, etc etc
+    
+    var subject = "ENC STEM Teacher Recommendation"; // can also make the subject dynamic if u want
+  
+    GmailApp.sendEmail(
+     email,
+     subject,
+     createEmailBody(teacherName,studentName),
+      {htmlBody: createEmailBody(teacherName,studentName),'from':"admissions@encstem.org",ReplyTo:"admissions@encstem.org"}
+ );
+    
+    stagingSheet.getRange(r,4).setValue("1");  // record that we've sent an email so we don't send another
+        
+    }
+  }
+}
+
+
+/**
+ * Creates email body and includes the links based on topic.
+ *
+ * @param {string} recipient - The recipient's email address.
+ * @param {string[]} topics - List of topics to include in the email body.
+ * @return {string} - The email body as an HTML string.
+ */
+function createEmailBody(teacherName, studentName) {
+ /* var topicsHtml = topics.map(function(topic) {
+  var url = topicUrls[topic];
+    return '<li><a href="' + url + '">' + topic + '</a></li>';
+  }).join('');
+  topicsHtml = '<ul>' + topicsHtml + '</ul>';*/
+  
+  // Make sure to update the emailTemplateDocId at the top.
+  var docId = DocumentApp.openByUrl(EMAIL_TEMPLATE_DOC_URL).getId();
+  var emailBody = docToHtml(docId);
+  emailBody = emailBody.replace(/{{teacherName}}/g, teacherName);
+  emailBody = emailBody.replace(/{{studentName}}/g, studentName);
+  return emailBody;
+}
+  
+
+/**
+ * Downloads a Google Doc as an HTML string.
+ * 
+ * @param {string} docId - The ID of a Google Doc to fetch content from.
+ * @return {string} The Google Doc rendered as an HTML string.
+ */
+function docToHtml(docId) {
+
+  // Downloads a Google Doc as an HTML string.
+  var url = "https://docs.google.com/feeds/download/documents/export/Export?id=" +
+            docId + "&exportFormat=html";
+  var param = {
+    method: "get",
+    headers: {"Authorization": "Bearer " + ScriptApp.getOAuthToken()},
+    muteHttpExceptions: true,
+  };
+  return UrlFetchApp.fetch(url, param).getContentText();
+}
+
+
+function runAllFunctions(){  
+createEmailBody();
+docToHtml();
+sendEmail();
+}
+
